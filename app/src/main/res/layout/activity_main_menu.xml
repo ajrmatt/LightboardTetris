@@ -10,8 +10,26 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="edu.iastate.ajrmatt.lightboardtetris.MainMenuActivity">
 
-    <TextView
+    <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!" />
+        android:layout_marginBottom="99dp"
+        android:id="@+id/highscoresButton"
+        android:text="Highscores"
+        android:onClick="onHighscoresClick"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/startGameButton"
+        android:text="Start Game"
+        android:onClick="onStartGameClick"
+        android:layout_marginBottom="31dp"
+        android:layout_above="@+id/highscoresButton"
+        android:layout_alignRight="@+id/highscoresButton"
+        android:layout_alignEnd="@+id/highscoresButton" />
+
+
 </RelativeLayout>
