@@ -11,8 +11,10 @@ public class Tetromino
         O, I, T, J, L, S, Z
     }
 
-    public Tetromino()
-    {
+    private TetriminoType type;
 
+    public Tetromino(TetriminoType theType)
+    {
+        type = theType;
     }
 }

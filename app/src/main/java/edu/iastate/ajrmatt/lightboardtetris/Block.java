@@ -9,15 +9,14 @@ public class Block {
     private int x;
     private int y;
 
-    private Tetromino parent;
+//    private Tetromino parent;
 
 
 
-    public Block(Tetromino theParent)
+    public Block()
     {
         x = 0;
         y = 0;
-        parent = theParent;
     }
 
 
