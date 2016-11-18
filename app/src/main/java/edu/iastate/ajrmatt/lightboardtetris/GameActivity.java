@@ -8,8 +8,8 @@ import android.widget.GridLayout;
 
 public class GameActivity extends Activity {
 
-    private static final int columnCount = 8;
-    private static final int rowCount = 8;
+    private static final int columnCount = 16;
+    private static final int rowCount = 18;
 
     private int[][] grid;
     private GridLayout gridLayout;
@@ -25,13 +25,14 @@ public class GameActivity extends Activity {
         initGrid();
 
         gridLayout = (GridLayout) findViewById(R.id.grid);
+        // Opposite because Grid Layout is apparently filled top to bottom, left to right
         gridLayout.setColumnCount(columnCount);
         gridLayout.setRowCount(rowCount);
         initGridLayoutWithViews();
-        setGridViewWidths(90);
+        setGridViewWidths(60);
 
         startGame();
-        updateViews();
+        updateView();
 
 //        View view = getViewAt(5,5);
 //        View view2 = getViewAt(5,6);
@@ -42,17 +43,19 @@ public class GameActivity extends Activity {
 
     public void startGame()
     {
-        current = new O(grid, 4, 4, 0);
+        current = new L(grid, 4, 4, 0);
+        new J(grid, 4, 7, 0);
 
     }
 
-    public void updateViews()
+    public void updateView()
     {
         for (int i = 0; i < grid.length; i++)
         {
             for (int j = 0; j < grid[i].length; j++)
             {
-                if (grid[i][j] != -1){
+                if (grid[i][j] != -1)
+                {
                     View view = getViewAt(i, j);
                     view.setBackgroundColor(Color.parseColor("green"));
                 }
@@ -67,7 +70,7 @@ public class GameActivity extends Activity {
 
     public View getViewAt(int x, int y)
     {
-        int tag = x * columnCount + y;
+        int tag = y * columnCount + x;
         View view = gridLayout.findViewWithTag(tag);
         return view;
     }
@@ -85,16 +88,18 @@ public class GameActivity extends Activity {
 
     private void initGridLayoutWithViews()
     {
-        for (int x = 0; x < columnCount; x++)
+        for (int y = 0; y < rowCount; y++)
         {
-            for (int y = 0; y < rowCount; y++)
+            for (int x = 0; x < columnCount; x++)
             {
                 View view = new View(this);
                 int tag = y * columnCount + x;
+                System.out.println(tag);
                 view.setTag(tag);
 //                view.getLayoutParams().width = 10;
 //                view.getLayoutParams().height = 10;
                 gridLayout.addView(view);
+//                if (x == 15 || y == 16) view.setBackgroundColor(Color.parseColor("red"));
             }
         }
     }
@@ -112,25 +117,25 @@ public class GameActivity extends Activity {
     public void rotateBlock(View view)
     {
         current.rotate();
-        updateViews();
+        updateView();
     }
 
     public void moveBlockLeft(View view)
     {
         current.moveLeft();
-        updateViews();
+        updateView();
     }
 
     public void moveBlockRight(View view)
     {
         current.moveRight();
-        updateViews();
+        updateView();
     }
 
     public void moveBlockDown(View view)
     {
         current.moveDown();
-        updateViews();
+        updateView();
     }
 
 }
