@@ -1,6 +1,7 @@
 package edu.iastate.ajrmatt.lightboardtetris;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.GridLayout;
@@ -12,6 +13,7 @@ public class GameActivity extends Activity {
 
     private int[][] grid;
     private GridLayout gridLayout;
+    Tetromino current;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -28,6 +30,8 @@ public class GameActivity extends Activity {
         initGridLayoutWithViews();
         setGridViewWidths(90);
 
+        startGame();
+        updateViews();
 
 //        View view = getViewAt(5,5);
 //        View view2 = getViewAt(5,6);
@@ -38,7 +42,27 @@ public class GameActivity extends Activity {
 
     public void startGame()
     {
+        current = new O(grid, 4, 4, 0);
 
+    }
+
+    public void updateViews()
+    {
+        for (int i = 0; i < grid.length; i++)
+        {
+            for (int j = 0; j < grid[i].length; j++)
+            {
+                if (grid[i][j] != -1){
+                    View view = getViewAt(i, j);
+                    view.setBackgroundColor(Color.parseColor("green"));
+                }
+                else
+                {
+                    View view = getViewAt(i, j);
+                    view.setBackgroundColor(Color.parseColor("black"));
+                }
+            }
+        }
     }
 
     public View getViewAt(int x, int y)
@@ -75,14 +99,38 @@ public class GameActivity extends Activity {
         }
     }
 
-    private void setGridViewWidths(int width)
+    private void setGridViewWidths(int size)
     {
         for (int i = 0; i < gridLayout.getChildCount(); i++)
         {
             View view = gridLayout.getChildAt(i);
-            view.getLayoutParams().width = width;
-            view.getLayoutParams().height = width;
+            view.getLayoutParams().width = size;
+            view.getLayoutParams().height = size;
         }
+    }
+
+    public void rotateBlock(View view)
+    {
+        current.rotate();
+        updateViews();
+    }
+
+    public void moveBlockLeft(View view)
+    {
+        current.moveLeft();
+        updateViews();
+    }
+
+    public void moveBlockRight(View view)
+    {
+        current.moveRight();
+        updateViews();
+    }
+
+    public void moveBlockDown(View view)
+    {
+        current.moveDown();
+        updateViews();
     }
 
 }
