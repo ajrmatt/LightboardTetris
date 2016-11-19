@@ -6,14 +6,23 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.GridLayout;
 
-public class GameActivity extends Activity {
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 
-    private static final int columnCount = 16;
+public class GameActivity extends Activity
+{
+    private static final int columnCount = 14;
     private static final int rowCount = 18;
+    private static final int[] placementPoint = {7, 1};
+    private static final int placementRotation = 0;
 
     private int[][] grid;
     private GridLayout gridLayout;
     Tetromino current;
+    Tetromino next;
+
+    private Timer fallingTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -43,9 +52,72 @@ public class GameActivity extends Activity {
 
     public void startGame()
     {
-        current = new L(grid, 4, 4, 0);
-        new J(grid, 4, 7, 0);
+//        current = generateRandomTetromino();
+//        current.placeInGrid(4, 4, 0);
+//        new J(grid).placeInGrid(4, 7, 0);
+//        boolean running = true;
+//        while(running)
+//        {
+            next = generateRandomTetromino();
+            placeNextTetromino();
+            updateView();
 
+//        }
+    }
+
+    public void placeNextTetromino()
+    {
+        current = next;
+        current.placeInGrid(placementPoint[0], placementPoint[1], placementRotation);
+        next = generateRandomTetromino();
+        if (fallingTimer != null) fallingTimer.cancel();
+        fallingTimer = new Timer();
+        fallingTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run()
+            {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run()
+                    {
+                        moveBlockDown(findViewById(R.id.buttonDown));
+                    }
+                });
+            }
+        }, 1500, 1500);
+    }
+
+    public Tetromino generateRandomTetromino()
+    {
+        int type = new Random().nextInt(7);
+        switch (type)
+        {
+            case 0 : return new I(grid);
+            case 1 : return new J(grid);
+            case 2 : return new L(grid);
+            case 3 : return new O(grid);
+            case 4 : return new S(grid);
+            case 5 : return new T(grid);
+            case 6 : return new Z(grid);
+            default: return null;
+        }
+    }
+
+    /* TODO Finish */
+    public void clearFullRows()
+    {
+        for (int i = 0; i < current.getLocation().length; i++)
+        {
+            boolean rowIsFull = true;
+            for (int j = 0; j < columnCount; j++)
+            {
+                if (grid[j][current.getLocation()[i][1]] < 0)
+                {
+                    rowIsFull = false;
+                    break;
+                }
+            }
+        }
     }
 
     public void updateView()
@@ -57,7 +129,7 @@ public class GameActivity extends Activity {
                 if (grid[i][j] != -1)
                 {
                     View view = getViewAt(i, j);
-                    view.setBackgroundColor(Color.parseColor("green"));
+                    view.setBackgroundColor(Color.parseColor(gridColorToViewColor(grid[i][j])));
                 }
                 else
                 {
@@ -109,8 +181,21 @@ public class GameActivity extends Activity {
         for (int i = 0; i < gridLayout.getChildCount(); i++)
         {
             View view = gridLayout.getChildAt(i);
-            view.getLayoutParams().width = size;
+            view.getLayoutParams().width  = size;
             view.getLayoutParams().height = size;
+        }
+    }
+
+    private String gridColorToViewColor(int gridColor)
+    {
+        switch (gridColor)
+        {
+            case 0 : return "green";
+            case 1 : return "red";
+            case 2 : return "blue";
+            case 3 : return "yellow";
+            case 4 : return "purple";
+            default: return null;
         }
     }
 
@@ -134,8 +219,11 @@ public class GameActivity extends Activity {
 
     public void moveBlockDown(View view)
     {
-        current.moveDown();
+        if (!current.moveDown())
+        {
+            current.setSet(true);
+            placeNextTetromino();
+        }
         updateView();
     }
-
 }

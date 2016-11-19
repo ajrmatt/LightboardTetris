@@ -1,31 +1,53 @@
 package edu.iastate.ajrmatt.lightboardtetris;
 
+import java.util.Random;
+
 /**
  * Created by ajrmatt on 11/10/16.
  */
 
-public abstract class Tetromino
+abstract class Tetromino
 {
 
-    protected int[][] grid;
-    protected int[] center;
-    protected int[][] location;
-    protected Rotation[] rotations;
-    protected int currentRotation;
-    protected int color;
+    private int[][] grid;
+    private int[] center;
+    private int[][] location;
+    Rotation[] rotations;
+    private int currentRotation;
+    private boolean isSet;
+    private int color;
+    private String viewColor;
 
-    public Tetromino(int[][] theGrid, int theX, int theY)
+    Tetromino(int[][] theGrid)
     {
         grid = theGrid;
-        center = new int[] {theX, theY};
+        isSet = false;
+        color = randomColor();
     }
 
-    public void rotate()
+    boolean placeInGrid(int x, int y, int rotation)
     {
-        int[][] newLocation = location;
 
+        int[][] desiredLocation = rotations[currentRotation].position(x, y);
+        if (positionIsValid(desiredLocation))
+        {
+            center = new int[] {x, y};
+            currentRotation = rotation;
+            location = desiredLocation;
+
+            for (int i = 0; i < location.length; i++)
+            {
+                grid[location[i][0]][location[i][1]] = color;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    void rotate()
+    {
         int nextRotation = (currentRotation == rotations.length - 1) ? 0 : currentRotation + 1;
-        newLocation = rotations[nextRotation].position(center[0], center[1]);
+        int[][] newLocation = rotations[nextRotation].position(center[0], center[1]);
 
         for (int i = 0; i < newLocation.length; i++)
         {
@@ -42,10 +64,9 @@ public abstract class Tetromino
         {
             grid[location[i][0]][location[i][1]] = color;
         }
-
     }
 
-    public boolean moveDown()
+    boolean moveDown()
     {
         int[][] newLocation = copyLocationOf(location);
         boolean stillMovingDown = false;
@@ -71,7 +92,7 @@ public abstract class Tetromino
         return stillMovingDown;
     }
 
-    public void moveLeft()
+    void moveLeft()
     {
         int[][] newLocation = copyLocationOf(location);
 
@@ -93,7 +114,7 @@ public abstract class Tetromino
         }
     }
 
-    public void moveRight()
+    void moveRight()
     {
         int[][] newLocation = copyLocationOf(location);
 
@@ -112,6 +133,29 @@ public abstract class Tetromino
         for (int i = 0; i < location.length; i++)
         {
             grid[location[i][0]][location[i][1]] = color;
+        }
+    }
+
+    public boolean containsBlock(int x, int y)
+    {
+        for (int i = 0; i < location.length; i++)
+        {
+            if (location[i][0] == x && location[i][1] == y) return true;
+        }
+        return false;
+    }
+
+    private int randomColor()
+    {
+        int color = new Random().nextInt(5);
+        switch (color)
+        {
+            case 0 : return 0;
+            case 1 : return 1;
+            case 2 : return 2;
+            case 3 : return 3;
+            case 4 : return 4;
+            default: return -1;
         }
     }
 
@@ -141,13 +185,66 @@ public abstract class Tetromino
         }
         return copy;
     }
+
+
+    /**** GETTERS AND SETTERS ****/
+
+    public boolean isSet() {
+        return isSet;
+    }
+
+    void setSet(boolean set) {
+        isSet = set;
+    }
+
+    public int[][] getLocation() {
+        return location;
+    }
+
+    public void setLocation(int[][] location) {
+        this.location = location;
+    }
+
+    public int[] getCenter() {
+        return center;
+    }
+
+    public void setCenter(int[] center) {
+        this.center = center;
+    }
+
+    public int getCurrentRotation() {
+        return currentRotation;
+    }
+
+    public void setCurrentRotation(int currentRotation) {
+        this.currentRotation = currentRotation;
+    }
+
+    public int getColor() {
+        return color;
+    }
+
+    public void setColor(int color) {
+        this.color = color;
+    }
+
+    public String getViewColor() {
+        return viewColor;
+    }
+
+    public void setViewColor(String viewColor) {
+        this.viewColor = viewColor;
+    }
+
+
 }
 
 class O extends Tetromino
 {
-    public O(int[][] theGrid, int theX, int theY, int theRotation)
+    O(int[][] theGrid)
     {
-        super(theGrid, theX, theY);
+        super(theGrid);
         rotations = new Rotation[] {
                 new Rotation() {
                     /*
@@ -166,23 +263,15 @@ class O extends Tetromino
                     }
                 }
         };
-        location = rotations[theRotation].position(theX, theY);
-        currentRotation = theRotation;
-
-        for (int i = 0; i < location.length; i++)
-        {
-            grid[location[i][0]][location[i][1]] = color;
-        }
-
     }
 }
 
 class I extends Tetromino
 {
 
-    public I(int[][] theGrid, int theX, int theY, int theRotation)
+    I(int[][] theGrid)
     {
-        super(theGrid, theX, theY);
+        super(theGrid);
         rotations = new Rotation[] {
                 new Rotation() {
                     /*
@@ -253,22 +342,15 @@ class I extends Tetromino
                     }
                 },
         };
-        currentRotation = theRotation;
-        location = rotations[currentRotation].position(theX, theY);
-
-        for (int i = 0; i < location.length; i++)
-        {
-            grid[location[i][0]][location[i][1]] = color;
-        }
     }
 }
 
 class T extends Tetromino
 {
 
-    public T(int[][] theGrid, int theX, int theY, int theRotation)
+    T(int[][] theGrid)
     {
-        super(theGrid, theX, theY);
+        super(theGrid);
         rotations = new Rotation[] {
                 new Rotation() {
                     /*
@@ -335,22 +417,15 @@ class T extends Tetromino
                     }
                 },
         };
-        location = rotations[theRotation].position(theX, theY);
-        currentRotation = theRotation;
-
-        for (int i = 0; i < location.length; i++)
-        {
-            grid[location[i][0]][location[i][1]] = color;
-        }
     }
 }
 
 class J extends Tetromino
 {
 
-    public J(int[][] theGrid, int theX, int theY, int theRotation)
+    J(int[][] theGrid)
     {
-        super(theGrid, theX, theY);
+        super(theGrid);
         rotations = new Rotation[]{
                 new Rotation() {
                     /*
@@ -417,22 +492,15 @@ class J extends Tetromino
                     }
                 },
         };
-        location = rotations[theRotation].position(theX, theY);
-        currentRotation = theRotation;
-
-        for (int i = 0; i < location.length; i++)
-        {
-            grid[location[i][0]][location[i][1]] = color;
-        }
     }
 }
 
 class L extends Tetromino
 {
 
-    public L(int[][] theGrid, int theX, int theY, int theRotation)
+    L(int[][] theGrid)
     {
-        super(theGrid, theX, theY);
+        super(theGrid);
         rotations = new Rotation[]{
                 new Rotation() {
                     /*
@@ -499,22 +567,15 @@ class L extends Tetromino
                     }
                 },
         };
-        location = rotations[theRotation].position(theX, theY);
-        currentRotation = theRotation;
-
-        for (int i = 0; i < location.length; i++)
-        {
-            grid[location[i][0]][location[i][1]] = color;
-        }
     }
 }
 
 class S extends Tetromino
 {
 
-    public S(int[][] theGrid, int theX, int theY, int theRotation)
+    S(int[][] theGrid)
     {
-        super(theGrid, theX, theY);
+        super(theGrid);
         rotations = new Rotation[]{
                 new Rotation() {
                     /*
@@ -581,22 +642,15 @@ class S extends Tetromino
                     }
                 },
         };
-        location = rotations[theRotation].position(theX, theY);
-        currentRotation = theRotation;
-
-        for (int i = 0; i < location.length; i++)
-        {
-            grid[location[i][0]][location[i][1]] = color;
-        }
     }
 }
 
 class Z extends Tetromino
 {
 
-    public Z(int[][] theGrid, int theX, int theY, int theRotation)
+    Z(int[][] theGrid)
     {
-        super(theGrid, theX, theY);
+        super(theGrid);
         rotations = new Rotation[]{
                 new Rotation() {
                     /*
@@ -663,12 +717,5 @@ class Z extends Tetromino
                     }
                 },
         };
-        location = rotations[theRotation].position(theX, theY);
-        currentRotation = theRotation;
-
-        for (int i = 0; i < location.length; i++)
-        {
-            grid[location[i][0]][location[i][1]] = color;
-        }
     }
 }
