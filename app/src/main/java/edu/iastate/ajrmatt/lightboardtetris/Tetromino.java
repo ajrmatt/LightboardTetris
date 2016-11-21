@@ -2,6 +2,8 @@ package edu.iastate.ajrmatt.lightboardtetris;
 
 import java.util.Random;
 
+import static edu.iastate.ajrmatt.lightboardtetris.GameActivity.BLANK;
+
 /**
  * Created by ajrmatt on 11/10/16.
  */
@@ -51,7 +53,7 @@ abstract class Tetromino
 
         for (int i = 0; i < newLocation.length; i++)
         {
-            grid[location[i][0]][location[i][1]] = -1;
+            grid[location[i][0]][location[i][1]] = BLANK;
         }
 
         if (positionIsValid(newLocation))
@@ -74,7 +76,7 @@ abstract class Tetromino
         for (int i = 0; i < newLocation.length; i++)
         {
             newLocation[i][1]++;
-            grid[location[i][0]][location[i][1]] = -1;
+            grid[location[i][0]][location[i][1]] = BLANK;
         }
 
         if (positionIsValid(newLocation))
@@ -99,7 +101,7 @@ abstract class Tetromino
         for (int i = 0; i < newLocation.length; i++)
         {
             newLocation[i][0]--;
-            grid[location[i][0]][location[i][1]] = -1;
+            grid[location[i][0]][location[i][1]] = BLANK;
         }
 
         if (positionIsValid(newLocation))
@@ -121,7 +123,7 @@ abstract class Tetromino
         for (int i = 0; i < newLocation.length; i++)
         {
             newLocation[i][0]++;
-            grid[location[i][0]][location[i][1]] = -1;
+            grid[location[i][0]][location[i][1]] = BLANK;
         }
 
         if (positionIsValid(newLocation))
@@ -168,7 +170,7 @@ abstract class Tetromino
             {
                 return false;
             }
-            if (grid[location[x][0]][location[x][1]] > -1)
+            if (grid[location[x][0]][location[x][1]] > BLANK)
             {
                 return false;
             }

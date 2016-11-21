@@ -6,18 +6,21 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.GridLayout;
 
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class GameActivity extends Activity
 {
-    private static final int columnCount = 14;
-    private static final int rowCount = 18;
-    private static final int[] placementPoint = {7, 1};
-    private static final int placementRotation = 0;
+    private static final int COLUMN_COUNT = 14;
+    private static final int ROW_COUNT = 18;
+    private static final int[] PLACEMENT_POINT = {7, 1};
+    private static final int PLACEMENT_ROTATION = 0;
+    public static final int BLANK = -1;
 
     private int[][] grid;
+    private int highestFilledBlock = 0;
     private GridLayout gridLayout;
     Tetromino current;
     Tetromino next;
@@ -30,13 +33,13 @@ public class GameActivity extends Activity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
 
-        grid = new int[columnCount][rowCount];
+        grid = new int[COLUMN_COUNT][ROW_COUNT];
         initGrid();
 
         gridLayout = (GridLayout) findViewById(R.id.grid);
         // Opposite because Grid Layout is apparently filled top to bottom, left to right
-        gridLayout.setColumnCount(columnCount);
-        gridLayout.setRowCount(rowCount);
+        gridLayout.setColumnCount(COLUMN_COUNT);
+        gridLayout.setRowCount(ROW_COUNT);
         initGridLayoutWithViews();
         setGridViewWidths(60);
 
@@ -68,7 +71,7 @@ public class GameActivity extends Activity
     public void placeNextTetromino()
     {
         current = next;
-        current.placeInGrid(placementPoint[0], placementPoint[1], placementRotation);
+        current.placeInGrid(PLACEMENT_POINT[0], PLACEMENT_POINT[1], PLACEMENT_ROTATION);
         next = generateRandomTetromino();
         if (fallingTimer != null) fallingTimer.cancel();
         fallingTimer = new Timer();
@@ -104,29 +107,48 @@ public class GameActivity extends Activity
     }
 
     /* TODO Finish */
-    public void clearFullRows()
+    public void clearFullRowsAndCollapse()
     {
+        // Find full rows
+        ArrayList<Integer> fullRows = new ArrayList<>();
         for (int i = 0; i < current.getLocation().length; i++)
         {
             boolean rowIsFull = true;
-            for (int j = 0; j < columnCount; j++)
+            int rowToCheck = current.getLocation()[i][1];
+            for (int j = 0; j < COLUMN_COUNT; j++)
             {
-                if (grid[j][current.getLocation()[i][1]] < 0)
+                if (grid[j][rowToCheck] == BLANK)
                 {
                     rowIsFull = false;
                     break;
                 }
             }
+            if (!fullRows.contains(rowToCheck) && rowIsFull) fullRows.add(rowToCheck);
+        }
+        // Clear full rows
+        for (int i = fullRows.size() - 1; i >= 0; i--)
+        {
+            int rowToClear = fullRows.get(i);
+            for (int j = 0; j < COLUMN_COUNT; j++)
+            {
+                grid[i][j] = BLANK;
+            }
+        }
+        // Collapse
+            // Starts one row above lowest cleared row
+        for (int i = fullRows.indexOf(fullRows.size()); i <= highestFilledBlock; i--)
+        {
+
         }
     }
 
     public void updateView()
     {
-        for (int i = 0; i < grid.length; i++)
+        for (int i = 0; i < COLUMN_COUNT; i++)
         {
-            for (int j = 0; j < grid[i].length; j++)
+            for (int j = 0; j < ROW_COUNT; j++)
             {
-                if (grid[i][j] != -1)
+                if (grid[i][j] != BLANK)
                 {
                     View view = getViewAt(i, j);
                     view.setBackgroundColor(Color.parseColor(gridColorToViewColor(grid[i][j])));
@@ -142,30 +164,30 @@ public class GameActivity extends Activity
 
     public View getViewAt(int x, int y)
     {
-        int tag = y * columnCount + x;
+        int tag = y * COLUMN_COUNT + x;
         View view = gridLayout.findViewWithTag(tag);
         return view;
     }
 
     private void initGrid()
     {
-        for (int x = 0; x < columnCount; x++)
+        for (int x = 0; x < COLUMN_COUNT; x++)
         {
-            for (int y = 0; y < rowCount; y++)
+            for (int y = 0; y < ROW_COUNT; y++)
             {
-                grid[x][y] = -1;
+                grid[x][y] = BLANK;
             }
         }
     }
 
     private void initGridLayoutWithViews()
     {
-        for (int y = 0; y < rowCount; y++)
+        for (int y = 0; y < ROW_COUNT; y++)
         {
-            for (int x = 0; x < columnCount; x++)
+            for (int x = 0; x < COLUMN_COUNT; x++)
             {
                 View view = new View(this);
-                int tag = y * columnCount + x;
+                int tag = y * COLUMN_COUNT + x;
                 System.out.println(tag);
                 view.setTag(tag);
 //                view.getLayoutParams().width = 10;
@@ -190,6 +212,7 @@ public class GameActivity extends Activity
     {
         switch (gridColor)
         {
+            /* TODO change case values to match possible LED matrix/grid values */
             case 0 : return "green";
             case 1 : return "red";
             case 2 : return "blue";
@@ -222,6 +245,11 @@ public class GameActivity extends Activity
         if (!current.moveDown())
         {
             current.setSet(true);
+            for (int i = 0; i < current.getLocation().length; i++)
+            {
+                int blockHeight = current.getLocation()[i][1];
+                if (blockHeight > highestFilledBlock) highestFilledBlock = blockHeight;
+            }
             placeNextTetromino();
         }
         updateView();
