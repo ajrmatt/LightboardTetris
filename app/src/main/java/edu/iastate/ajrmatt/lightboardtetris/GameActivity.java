@@ -7,20 +7,23 @@ import android.view.View;
 import android.widget.GridLayout;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class GameActivity extends Activity
 {
-    private static final int COLUMN_COUNT = 14;
-    private static final int ROW_COUNT = 18;
-    private static final int[] PLACEMENT_POINT = {7, 1};
+    private static final int COLUMN_COUNT = 12;
+    private static final int ROW_COUNT = 12;
+    private static final int[] PLACEMENT_POINT = {COLUMN_COUNT/2, 1};
     private static final int PLACEMENT_ROTATION = 0;
     public static final int BLANK = -1;
+    private static final int VIEW_BLOCK_WIDTH = 70;
 
     private int[][] grid;
-    private int highestFilledBlock = 0;
+    private int highestFilledBlock = ROW_COUNT - 1;
     private GridLayout gridLayout;
     Tetromino current;
     Tetromino next;
@@ -41,7 +44,7 @@ public class GameActivity extends Activity
         gridLayout.setColumnCount(COLUMN_COUNT);
         gridLayout.setRowCount(ROW_COUNT);
         initGridLayoutWithViews();
-        setGridViewWidths(60);
+        setGridViewWidths(VIEW_BLOCK_WIDTH);
 
         startGame();
         updateView();
@@ -95,29 +98,29 @@ public class GameActivity extends Activity
         int type = new Random().nextInt(7);
         switch (type)
         {
-            case 0 : return new I(grid);
-            case 1 : return new J(grid);
-            case 2 : return new L(grid);
-            case 3 : return new O(grid);
-            case 4 : return new S(grid);
-            case 5 : return new T(grid);
-            case 6 : return new Z(grid);
-            default: return null;
+            case 0  : return new I(grid);
+            case 1  : return new J(grid);
+            case 2  : return new L(grid);
+            case 3  : return new O(grid);
+            case 4  : return new S(grid);
+            case 5  : return new T(grid);
+            case 6  : return new Z(grid);
+            default : return null;
         }
     }
 
     /* TODO Finish */
     public void clearFullRowsAndCollapse()
     {
-        // Find full rows
+        // Find full rows (only necessary to check y values of current Tetromino)
         ArrayList<Integer> fullRows = new ArrayList<>();
-        for (int i = 0; i < current.getLocation().length; i++)
+        for (int l = 0; l < current.getLocation().length; l++)
         {
             boolean rowIsFull = true;
-            int rowToCheck = current.getLocation()[i][1];
-            for (int j = 0; j < COLUMN_COUNT; j++)
+            int rowToCheck = current.getLocation()[l][1];
+            for (int i = 0; i < COLUMN_COUNT; i++)
             {
-                if (grid[j][rowToCheck] == BLANK)
+                if (grid[i][rowToCheck] == BLANK)
                 {
                     rowIsFull = false;
                     break;
@@ -125,28 +128,56 @@ public class GameActivity extends Activity
             }
             if (!fullRows.contains(rowToCheck) && rowIsFull) fullRows.add(rowToCheck);
         }
-        // Clear full rows
-        for (int i = fullRows.size() - 1; i >= 0; i--)
+        if (fullRows.size() > 0)
         {
-            int rowToClear = fullRows.get(i);
-            for (int j = 0; j < COLUMN_COUNT; j++)
+            // Sort in descending order
+            Collections.sort(fullRows, new Comparator<Integer>()
             {
-                grid[i][j] = BLANK;
+                @Override
+                public int compare(Integer o1, Integer o2)
+                {
+                    return o2.compareTo(o1);
+                }
+            });
+            // Clear full rows
+            for (int r = 0; r < fullRows.size(); r++)
+            {
+                int rowToClear = fullRows.get(r);
+                for (int i = 0; i < COLUMN_COUNT; i++)
+                {
+                    grid[i][rowToClear] = BLANK;
+                }
             }
-        }
-        // Collapse
+            // Collapse
             // Starts one row above lowest cleared row
-        for (int i = fullRows.indexOf(fullRows.size()); i <= highestFilledBlock; i--)
-        {
-
+            int clearedRowsBelow = 1;
+            System.out.println("FullRows first index - 1: " + (fullRows.get(0) - 1));
+            System.out.println("highestFilledBlock before clear: " + highestFilledBlock);
+            for (int j = fullRows.get(0) - 1; j >= highestFilledBlock; j--)
+            {
+//                System.out.println(j);
+                if (fullRows.size() > clearedRowsBelow && j == fullRows.get(clearedRowsBelow))
+                {
+                    System.out.println("j = clearedRowsBelow");
+                    clearedRowsBelow++;
+                    continue;
+                }
+                for (int i = 0; i < COLUMN_COUNT; i++)
+                {
+                    grid[i][j + clearedRowsBelow] = grid[i][j];
+                    grid[i][j] = BLANK;
+                }
+            }
+            highestFilledBlock += fullRows.size();
+            System.out.println("highestFilledBlock after clear: " + highestFilledBlock);
         }
     }
 
     public void updateView()
     {
-        for (int i = 0; i < COLUMN_COUNT; i++)
+        for (int j = 0; j < ROW_COUNT; j++)
         {
-            for (int j = 0; j < ROW_COUNT; j++)
+            for (int i = 0; i < COLUMN_COUNT; i++)
             {
                 if (grid[i][j] != BLANK)
                 {
@@ -156,7 +187,7 @@ public class GameActivity extends Activity
                 else
                 {
                     View view = getViewAt(i, j);
-                    view.setBackgroundColor(Color.parseColor("black"));
+                    view.setBackgroundColor(Color.parseColor(gridColorToViewColor(BLANK)));
                 }
             }
         }
@@ -165,29 +196,28 @@ public class GameActivity extends Activity
     public View getViewAt(int x, int y)
     {
         int tag = y * COLUMN_COUNT + x;
-        View view = gridLayout.findViewWithTag(tag);
-        return view;
+        return gridLayout.findViewWithTag(tag);
     }
 
     private void initGrid()
     {
-        for (int x = 0; x < COLUMN_COUNT; x++)
+        for (int j = 0; j < ROW_COUNT; j++)
         {
-            for (int y = 0; y < ROW_COUNT; y++)
+            for (int i = 0; i < COLUMN_COUNT; i++)
             {
-                grid[x][y] = BLANK;
+                grid[i][j] = BLANK;
             }
         }
     }
 
     private void initGridLayoutWithViews()
     {
-        for (int y = 0; y < ROW_COUNT; y++)
+        for (int j = 0; j < ROW_COUNT; j++)
         {
-            for (int x = 0; x < COLUMN_COUNT; x++)
+            for (int i = 0; i < COLUMN_COUNT; i++)
             {
                 View view = new View(this);
-                int tag = y * COLUMN_COUNT + x;
+                int tag = j * COLUMN_COUNT + i;
                 System.out.println(tag);
                 view.setTag(tag);
 //                view.getLayoutParams().width = 10;
@@ -200,9 +230,9 @@ public class GameActivity extends Activity
 
     private void setGridViewWidths(int size)
     {
-        for (int i = 0; i < gridLayout.getChildCount(); i++)
+        for (int v = 0; v < gridLayout.getChildCount(); v++)
         {
-            View view = gridLayout.getChildAt(i);
+            View view = gridLayout.getChildAt(v);
             view.getLayoutParams().width  = size;
             view.getLayoutParams().height = size;
         }
@@ -213,12 +243,13 @@ public class GameActivity extends Activity
         switch (gridColor)
         {
             /* TODO change case values to match possible LED matrix/grid values */
-            case 0 : return "green";
-            case 1 : return "red";
-            case 2 : return "blue";
-            case 3 : return "yellow";
-            case 4 : return "purple";
-            default: return null;
+            case -1 : return "black";
+            case 0  : return "green";
+            case 1  : return "red";
+            case 2  : return "blue";
+            case 3  : return "yellow";
+            case 4  : return "purple";
+            default : return null;
         }
     }
 
@@ -248,8 +279,11 @@ public class GameActivity extends Activity
             for (int i = 0; i < current.getLocation().length; i++)
             {
                 int blockHeight = current.getLocation()[i][1];
-                if (blockHeight > highestFilledBlock) highestFilledBlock = blockHeight;
+                System.out.println("blockHeight: " + blockHeight);
+                if (blockHeight < highestFilledBlock) highestFilledBlock = blockHeight;
             }
+            System.out.println("highestFilledBlock after set: " + highestFilledBlock);
+            clearFullRowsAndCollapse();
             placeNextTetromino();
         }
         updateView();
