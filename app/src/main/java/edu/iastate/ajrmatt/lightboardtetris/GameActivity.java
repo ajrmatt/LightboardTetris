@@ -1,10 +1,12 @@
 package edu.iastate.ajrmatt.lightboardtetris;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.GridLayout;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,12 +17,12 @@ import java.util.TimerTask;
 
 public class GameActivity extends Activity
 {
-    private static final int COLUMN_COUNT = 12;
-    private static final int ROW_COUNT = 12;
+    private static final int   COLUMN_COUNT = 12;
+    private static final int   ROW_COUNT = 12;
     private static final int[] PLACEMENT_POINT = {COLUMN_COUNT/2, 1};
-    private static final int PLACEMENT_ROTATION = 0;
-    public static final int BLANK = -1;
-    private static final int VIEW_BLOCK_WIDTH = 70;
+    private static final int   PLACEMENT_ROTATION = 0;
+    public  static final int   BLANK = -1;
+    private static final int   VIEW_BLOCK_WIDTH = 70;
 
     private int[][] grid;
     private int highestFilledBlock = ROW_COUNT - 1;
@@ -28,13 +30,20 @@ public class GameActivity extends Activity
     Tetromino current;
     Tetromino next;
 
+    private int score = 0;
+
     private Timer fallingTimer;
+
+    private TextView scoreView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
+
+        scoreView = (TextView) findViewById(R.id.score);
+        scoreView.setText(String.valueOf(score));
 
         grid = new int[COLUMN_COUNT][ROW_COUNT];
         initGrid();
@@ -56,6 +65,27 @@ public class GameActivity extends Activity
 
     }
 
+    @Override
+    protected void onPause()
+    {
+        super.onPause();
+        pauseGame();
+    }
+
+    @Override
+    protected void onResume()
+    {
+        super.onResume();
+        resumeGame();
+    }
+
+//    @Override
+//    protected void onStop()
+//    {
+//        super.onStop();
+//        finish();
+//    }
+
     public void startGame()
     {
 //        current = generateRandomTetromino();
@@ -71,26 +101,43 @@ public class GameActivity extends Activity
 //        }
     }
 
-    public void placeNextTetromino()
+    public void pauseGame()
     {
-        current = next;
-        current.placeInGrid(PLACEMENT_POINT[0], PLACEMENT_POINT[1], PLACEMENT_ROTATION);
-        next = generateRandomTetromino();
+        fallingTimer.cancel();
+    }
+
+    public void resumeGame()
+    {
+        setFallingTimer();
+    }
+
+    public void setFallingTimer()
+    {
         if (fallingTimer != null) fallingTimer.cancel();
         fallingTimer = new Timer();
         fallingTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
-            public void run()
-            {
+            public void run() {
                 runOnUiThread(new Runnable() {
                     @Override
-                    public void run()
-                    {
+                    public void run() {
                         moveBlockDown(findViewById(R.id.buttonDown));
                     }
                 });
             }
         }, 1500, 1500);
+    }
+
+    public void placeNextTetromino()
+    {
+        current = next;
+        if(current.placeInGrid(PLACEMENT_POINT[0], PLACEMENT_POINT[1], PLACEMENT_ROTATION)) {
+            next = generateRandomTetromino();
+        }
+        else
+        {
+            endGame();
+        }
     }
 
     public Tetromino generateRandomTetromino()
@@ -128,7 +175,8 @@ public class GameActivity extends Activity
             }
             if (!fullRows.contains(rowToCheck) && rowIsFull) fullRows.add(rowToCheck);
         }
-        if (fullRows.size() > 0)
+        int numFullRows = fullRows.size();
+        if (numFullRows > 0)
         {
             // Sort in descending order
             Collections.sort(fullRows, new Comparator<Integer>()
@@ -151,14 +199,14 @@ public class GameActivity extends Activity
             // Collapse
             // Starts one row above lowest cleared row
             int clearedRowsBelow = 1;
-            System.out.println("FullRows first index - 1: " + (fullRows.get(0) - 1));
-            System.out.println("highestFilledBlock before clear: " + highestFilledBlock);
+//            System.out.println("FullRows first index - 1: " + (fullRows.get(0) - 1));
+//            System.out.println("highestFilledBlock before clear: " + highestFilledBlock);
             for (int j = fullRows.get(0) - 1; j >= highestFilledBlock; j--)
             {
 //                System.out.println(j);
                 if (fullRows.size() > clearedRowsBelow && j == fullRows.get(clearedRowsBelow))
                 {
-                    System.out.println("j = clearedRowsBelow");
+//                    System.out.println("j = clearedRowsBelow");
                     clearedRowsBelow++;
                     continue;
                 }
@@ -168,9 +216,28 @@ public class GameActivity extends Activity
                     grid[i][j] = BLANK;
                 }
             }
-            highestFilledBlock += fullRows.size();
-            System.out.println("highestFilledBlock after clear: " + highestFilledBlock);
+            highestFilledBlock += numFullRows;
+//            System.out.println("highestFilledBlock after clear: " + highestFilledBlock);
+
+            switch (numFullRows)
+            {
+                case 1  : score += 40; break;
+                case 2  : score += 100; break;
+                case 3  : score += 300; break;
+                case 4  : score += 1200; break;
+                default : score += 0;
+            }
+            scoreView.setText(String.valueOf(score));
         }
+    }
+
+    public void endGame()
+    {
+        Intent endGame = new Intent(getApplicationContext(), GameEndActivity.class);
+        endGame.putExtra("score", score);
+        endGame.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(endGame);
+        finish();
     }
 
     public void updateView()
@@ -260,10 +327,10 @@ public class GameActivity extends Activity
     }
 
     public void moveBlockLeft(View view)
-    {
-        current.moveLeft();
-        updateView();
-    }
+{
+    current.moveLeft();
+    updateView();
+}
 
     public void moveBlockRight(View view)
     {
@@ -279,10 +346,10 @@ public class GameActivity extends Activity
             for (int i = 0; i < current.getLocation().length; i++)
             {
                 int blockHeight = current.getLocation()[i][1];
-                System.out.println("blockHeight: " + blockHeight);
+//                System.out.println("blockHeight: " + blockHeight);
                 if (blockHeight < highestFilledBlock) highestFilledBlock = blockHeight;
             }
-            System.out.println("highestFilledBlock after set: " + highestFilledBlock);
+//            System.out.println("highestFilledBlock after set: " + highestFilledBlock);
             clearFullRowsAndCollapse();
             placeNextTetromino();
         }

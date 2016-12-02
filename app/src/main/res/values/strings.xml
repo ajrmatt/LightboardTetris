@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Lightboard Tetris</string>
+    <string name="name_default">Name</string>
 </resources>
