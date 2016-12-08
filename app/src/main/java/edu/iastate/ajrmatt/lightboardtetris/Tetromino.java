@@ -149,16 +149,17 @@ abstract class Tetromino
 
     private int randomColor()
     {
-        int color = new Random().nextInt(5);
-        switch (color)
-        {
-            case 0 : return 0;
-            case 1 : return 1;
-            case 2 : return 2;
-            case 3 : return 3;
-            case 4 : return 4;
-            default: return -1;
-        }
+//        int color =
+        return new Random().nextInt(5);
+//        switch (color)
+//        {
+//            case 0 : return 0;
+//            case 1 : return 1;
+//            case 2 : return 2;
+//            case 3 : return 3;
+//            case 4 : return 4;
+//            default: return -1;
+//        }
     }
 
     private boolean positionIsValid(int[][] location)

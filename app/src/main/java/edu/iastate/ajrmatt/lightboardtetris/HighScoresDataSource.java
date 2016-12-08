@@ -1,6 +1,9 @@
 package edu.iastate.ajrmatt.lightboardtetris;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.InputMismatchException;
 import java.util.List;
 
 import android.content.ContentValues;
@@ -84,7 +87,7 @@ public class HighScoresDataSource
 
     public Cursor getCursorToMinHighScore()
     {
-        Cursor cursor = database.query(HighScoresEntry.TABLE_HIGH_SCORES, new String[] { "min(" + HighScoresEntry.COLUMN_NAME_SCORE + ")"}, null, null, null, null, null);
+        Cursor cursor = database.query(HighScoresEntry.TABLE_HIGH_SCORES, new String[] { "MIN(" + HighScoresEntry.COLUMN_NAME_SCORE + ")"}, null, null, null, null, null);
         cursor.moveToFirst();
         return cursor;
     }
@@ -93,11 +96,18 @@ public class HighScoresDataSource
     {
         long id = highScore.getId();
         String id_string = "" + id;
-        database.delete(HighScoresEntry.TABLE_HIGH_SCORES, "? = ?", new String[] { HighScoresEntry._ID, id_string });
+//        database.delete(HighScoresEntry.TABLE_HIGH_SCORES, "? = ?", new String[] { HighScoresEntry._ID, id_string });
+        database.execSQL("DELETE FROM " + HighScoresEntry.TABLE_HIGH_SCORES + " WHERE " + HighScoresEntry._ID + " = " + id_string);
     }
 
-    public List<HighScore> getAllHighScores() {
-        List<HighScore> highScores = new ArrayList<HighScore>();
+    public void clearHighScores()
+    {
+        database.execSQL("DELETE FROM " + HighScoresEntry.TABLE_HIGH_SCORES);
+//        database.execSQL("TRUNCATE TABLE " + HighScoresEntry.TABLE_HIGH_SCORES + ";");
+    }
+
+    public ArrayList<HighScore> getAllHighScoresSorted() {
+        ArrayList<HighScore> highScores = new ArrayList<HighScore>();
 
         // Query of all HighScore
         Cursor cursor = database.query(HighScoresEntry.TABLE_HIGH_SCORES, allColumns, null,
@@ -113,6 +123,16 @@ public class HighScoresDataSource
         }
 
         cursor.close();
+
+        // Sort in descending order
+        Collections.sort(highScores, new Comparator<HighScore>()
+        {
+            @Override
+            public int compare(HighScore o1, HighScore o2)
+            {
+                return Integer.compare(o2.getScore(), o1.getScore());
+            }
+        });
         return highScores;
     }
 

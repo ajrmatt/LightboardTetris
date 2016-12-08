@@ -1,13 +1,26 @@
 package edu.iastate.ajrmatt.lightboardtetris;
 
 import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
+import android.hardware.usb.UsbAccessory;
+import android.hardware.usb.UsbManager;
 import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
+import android.util.Log;
 import android.view.View;
 import android.widget.GridLayout;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -17,14 +30,62 @@ import java.util.TimerTask;
 
 public class GameActivity extends Activity
 {
+
+    // TAG is used to debug in Android logcat console
+    private static final String TAG = "ArduinoAccessory";
+
+    private static final String ACTION_USB_PERMISSION = "com.google.android.DemoKit.action.USB_PERMISSION";
+
+    private UsbManager mUsbManager;
+    private PendingIntent mPermissionIntent;
+    private boolean mPermissionRequestPending;
+    private ToggleButton buttonLED;
+
+    UsbAccessory mAccessory;
+    ParcelFileDescriptor mFileDescriptor;
+    FileInputStream mInputStream;
+    FileOutputStream mOutputStream;
+
+    private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (ACTION_USB_PERMISSION.equals(action)) {
+                synchronized (this) {
+                    UsbAccessory accessory = (UsbAccessory) intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+                    if (intent.getBooleanExtra(
+                            UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                        openAccessory(accessory);
+                    } else {
+                        Log.d(TAG, "permission denied for accessory "
+                                + accessory);
+                    }
+                    mPermissionRequestPending = false;
+                }
+            } else if (UsbManager.ACTION_USB_ACCESSORY_DETACHED.equals(action)) {
+                UsbAccessory accessory = (UsbAccessory) intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
+                if (accessory != null && accessory.equals(mAccessory)) {
+                    closeAccessory();
+                }
+            }
+        }
+    };
+
+
+
+
+
+
     private static final int   COLUMN_COUNT = 12;
     private static final int   ROW_COUNT = 12;
     private static final int[] PLACEMENT_POINT = {COLUMN_COUNT/2, 1};
     private static final int   PLACEMENT_ROTATION = 0;
     public  static final int   BLANK = -1;
     private static final int   VIEW_BLOCK_WIDTH = 70;
+    private static final int   FALL_TIME = 1000;
 
     private int[][] grid;
+    private byte[] matrix;
     private int highestFilledBlock = ROW_COUNT - 1;
     private GridLayout gridLayout;
     Tetromino current;
@@ -40,28 +101,52 @@ public class GameActivity extends Activity
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_game);
 
+        mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        mPermissionIntent = PendingIntent.getBroadcast(this, 0, new Intent(ACTION_USB_PERMISSION), 0);
+        IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+        filter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
+        registerReceiver(mUsbReceiver, filter);
+
+        setContentView(R.layout.activity_game);
         scoreView = (TextView) findViewById(R.id.score);
         scoreView.setText(String.valueOf(score));
 
         grid = new int[COLUMN_COUNT][ROW_COUNT];
         initGrid();
 
+        matrix = new byte[32*32*2+2];
+
         gridLayout = (GridLayout) findViewById(R.id.grid);
-        // Opposite because Grid Layout is apparently filled top to bottom, left to right
         gridLayout.setColumnCount(COLUMN_COUNT);
         gridLayout.setRowCount(ROW_COUNT);
         initGridLayoutWithViews();
         setGridViewWidths(VIEW_BLOCK_WIDTH);
 
         startGame();
-        updateView();
 
-//        View view = getViewAt(5,5);
-//        View view2 = getViewAt(5,6);
-//        view.setBackgroundColor(Color.parseColor("#F00000"));
-//        view2.setBackgroundColor(Color.parseColor("#00F000"));
+//        updateMatrix();
+
+
+
+
+
+//        HighScoresDataSource dataSource = HighScoresDataSource.getInstance(getApplicationContext());
+//        dataSource.open();
+//
+//        dataSource.clearHighScores();
+//        dataSource.createHighScore("Adam", 240);
+//        dataSource.createHighScore("Adam", 60);
+//        dataSource.createHighScore("Jesse", 140);
+//        dataSource.createHighScore("Jesse", 180);
+//        dataSource.createHighScore("A", 0);
+//        dataSource.createHighScore("B", 0);
+//        dataSource.createHighScore("C", 0);
+//        dataSource.createHighScore("D", 0);
+//        dataSource.createHighScore("E", 0);
+//        dataSource.createHighScore("F", 0);
+
+//        dataSource.close();
 
     }
 
@@ -70,6 +155,8 @@ public class GameActivity extends Activity
     {
         super.onPause();
         pauseGame();
+
+        closeAccessory();
     }
 
     @Override
@@ -77,6 +164,33 @@ public class GameActivity extends Activity
     {
         super.onResume();
         resumeGame();
+
+        if (mInputStream != null && mOutputStream != null) {
+            return;
+        }
+
+        UsbAccessory[] accessories = mUsbManager.getAccessoryList();
+        UsbAccessory accessory = (accessories == null ? null : accessories[0]);
+        if (accessory != null) {
+            if (mUsbManager.hasPermission(accessory)) {
+                openAccessory(accessory);
+            } else {
+                synchronized (mUsbReceiver) {
+                    if (!mPermissionRequestPending) {
+                        mUsbManager.requestPermission(accessory,mPermissionIntent);
+                        mPermissionRequestPending = true;
+                    }
+                }
+            }
+        } else {
+            Log.d(TAG, "mAccessory is null");
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        unregisterReceiver(mUsbReceiver);
+        super.onDestroy();
     }
 
 //    @Override
@@ -88,17 +202,10 @@ public class GameActivity extends Activity
 
     public void startGame()
     {
-//        current = generateRandomTetromino();
-//        current.placeInGrid(4, 4, 0);
-//        new J(grid).placeInGrid(4, 7, 0);
-//        boolean running = true;
-//        while(running)
-//        {
-            next = generateRandomTetromino();
-            placeNextTetromino();
-            updateView();
-
-//        }
+        next = generateRandomTetromino();
+        placeNextTetromino();
+        updateMatrix();
+//        updateView();
     }
 
     public void pauseGame()
@@ -125,7 +232,7 @@ public class GameActivity extends Activity
                     }
                 });
             }
-        }, 1500, 1500);
+        }, FALL_TIME, FALL_TIME);
     }
 
     public void placeNextTetromino()
@@ -260,6 +367,36 @@ public class GameActivity extends Activity
         }
     }
 
+    public void updateMatrix()
+    {
+        matrix[0] = COLUMN_COUNT;
+        matrix[1] = ROW_COUNT;
+        for (int j = 0; j < ROW_COUNT; j++)
+        {
+            for (int i = 0; i < COLUMN_COUNT; i++)
+            {
+                int color = RGBtoMatrixColor(gridColorToRGB(grid[i][j]));
+                byte upper = (byte) (color >> 8);
+                byte lower = (byte) (color);
+                matrix[j*COLUMN_COUNT*2+i*2+2] = upper;
+                matrix[j*COLUMN_COUNT*2+i*2+3] = lower;
+//                System.out.printf("%x", upper);
+//                System.out.println("");
+//                System.out.printf("%x", lower);
+//                System.out.println("");
+            }
+        }
+
+        if(mOutputStream != null)
+        {
+            try {
+                mOutputStream.write(matrix);
+            } catch (IOException e) {
+                Log.e(TAG, "write failed", e);
+            }
+        }
+    }
+
     public View getViewAt(int x, int y)
     {
         int tag = y * COLUMN_COUNT + x;
@@ -285,7 +422,7 @@ public class GameActivity extends Activity
             {
                 View view = new View(this);
                 int tag = j * COLUMN_COUNT + i;
-                System.out.println(tag);
+//                System.out.println(tag);
                 view.setTag(tag);
 //                view.getLayoutParams().width = 10;
 //                view.getLayoutParams().height = 10;
@@ -320,22 +457,73 @@ public class GameActivity extends Activity
         }
     }
 
+    private byte[] gridColorToRGB(int gridColor)
+    {
+        switch (gridColor)
+        {
+            /* TODO change case values to match possible LED matrix/grid values */
+            case -1 : return new byte[] {0,0,0};
+            case 0  : return new byte[] {0,6,0};
+            case 1  : return new byte[] {6,0,0};
+            case 2  : return new byte[] {0,0,6};
+            case 3  : return new byte[] {3,3,0};
+            case 4  : return new byte[] {2,0,4};
+            default : return new byte[] {0,0,0};
+        }
+    }
+
+    private int RGBtoMatrixColor(byte[] rgb)
+    {
+        return ((rgb[0] & 0x7) << 13) | ((rgb[0] & 0x6) << 10) |
+                ((rgb[1] & 0x7) <<  8) | ((rgb[1] & 0x7) <<  5) |
+                ((rgb[2] & 0x7) <<  2) | ((rgb[2] & 0x6) >>  1);
+    }
+
+    private void openAccessory(UsbAccessory accessory) {
+        mFileDescriptor = mUsbManager.openAccessory(accessory);
+        if (mFileDescriptor != null) {
+            mAccessory = accessory;
+            FileDescriptor fd = mFileDescriptor.getFileDescriptor();
+            mInputStream = new FileInputStream(fd);
+            mOutputStream = new FileOutputStream(fd);
+            Log.d(TAG, "accessory opened");
+        } else {
+            Log.d(TAG, "accessory open fail");
+        }
+    }
+
+
+    private void closeAccessory() {
+        try {
+            if (mFileDescriptor != null) {
+                mFileDescriptor.close();
+            }
+        } catch (IOException e) {
+        } finally {
+            mFileDescriptor = null;
+            mAccessory = null;
+        }
+    }
+
     public void rotateBlock(View view)
     {
         current.rotate();
-        updateView();
+        updateMatrix();
+//        updateView();
     }
 
     public void moveBlockLeft(View view)
-{
-    current.moveLeft();
-    updateView();
-}
+    {
+        current.moveLeft();
+        updateMatrix();
+//        updateView();
+    }
 
     public void moveBlockRight(View view)
     {
         current.moveRight();
-        updateView();
+        updateMatrix();
+//        updateView();
     }
 
     public void moveBlockDown(View view)
@@ -353,6 +541,7 @@ public class GameActivity extends Activity
             clearFullRowsAndCollapse();
             placeNextTetromino();
         }
-        updateView();
+        updateMatrix();
+//        updateView();
     }
 }
